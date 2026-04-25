@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 // Cargar las variables del archivo .env
 dotenv.config();
 
+console.log("DB_HOST:", process.env.DB_HOST); // Should NOT be undefined
+console.log("DB_PORT:", process.env.DB_PORT);
 const db = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,

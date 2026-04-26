@@ -15,7 +15,7 @@ const db = mysql.createPool({
   port: process.env.DB_PORT || 27736,
   ssl: {
     // Esto es vital para Aiven
-    rejectUnauthorized: true 
+    rejectUnauthorized: false  
   },
   connectionLimit: 10,
   queueLimit: 0

@@ -159,7 +159,57 @@ router.get('/post-details/:postId', async (req, res) => {
         res.status(500).json({ error: "Error al recuperar detalles" });
     }
 });
-// --- RUTA: EDITAR POST EXISTENTE ---
+// --- RUTA: EDITAR POST EXISTENTE (IMAGEKIT) ---
+router.post('/editpost', async (req, res) => {
+    const { postitle, content, image_data, category_id, postid } = req.body;
+
+    try {
+        let finalImageUrl = null;
+
+        // 1. Verificamos si se envió una nueva imagen (base64)
+        if (image_data && image_data.includes("base64")) {
+            
+            // Subimos la nueva imagen a ImageKit
+            const uploadResponse = await imagekit.upload({
+                file: image_data, // El string base64 del frontend
+                fileName: `edit_${postid}_${Date.now()}.png`,
+                folder: "/divusac_posts",
+                useUniqueFileName: true
+            });
+
+            finalImageUrl = uploadResponse.url; // Obtenemos la URL de la nueva imagen
+        }
+
+        // 2. Ejecutamos el UPDATE en la base de datos
+        let query;
+        let queryParams;
+
+        if (finalImageUrl) {
+            // Si hubo imagen nueva, actualizamos todo incluyendo image_ref
+            query = "UPDATE post SET postitle = ?, content = ?, category_id = ?, image_ref = ? WHERE id = ?";
+            queryParams = [postitle, content, category_id, finalImageUrl, postid];
+        } else {
+            // Si el usuario no cambió la imagen, solo actualizamos los textos
+            query = "UPDATE post SET postitle = ?, content = ?, category_id = ? WHERE id = ?";
+            queryParams = [postitle, content, category_id, postid];
+        }
+
+        await db.execute(query, queryParams);
+
+        res.status(200).json({ 
+            message: "Post actualizado correctamente", 
+            postId: postid,
+            newUrl: finalImageUrl 
+        });
+
+    } catch (error) {
+        console.error("Error al editar post:", error);
+        res.status(500).json({ error: "Error interno al procesar la edición" });
+    }
+});
+
+// --- RUTA: EDITAR POST EXISTENTE (local)---
+/*
 router.post('/editpost', async (req, res) => {
     const { postitle, content, image_data, category_id, postid } = req.body;
     try {
@@ -179,7 +229,7 @@ router.post('/editpost', async (req, res) => {
         res.status(500).json({ error: "Error al editar post" });
     }
 });
-
+*/
 // --- RUTA: OBTENER DATOS DE USUARIO POR USERNAME ---
 
 router.get('/users/:username', async (req, res) => {

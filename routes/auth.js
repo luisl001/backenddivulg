@@ -4,11 +4,15 @@ import db from '../db.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-
+import ImageKit from 'imagekit';
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
+const imagekit = new ImageKit({
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT // Ejemplo: https://ik.imagekit.io/tu_id
+});
 // --- RUTA DE REGISTRO ---
 router.post('/register', async (req, res) => {
     const { name, username, email, password, isadmin } = req.body;
@@ -51,8 +55,31 @@ router.post('/login', async (req, res) => {
         res.status(500).json({ error: "Error en el login" });
     }
 });
+router.post('/post', async (req, res) => {
+    const { postitle, content, image_data, user_id, category_id } = req.body;
 
-// --- RUTA DE CREAR POST ---
+    try {
+        // subimos a la nube
+        const uploadResponse = await imagekit.upload({
+            file: image_data, // El base64 que viene del canvas
+            fileName: `banner_${Date.now()}.png`,
+            folder: "/divusac_posts"
+        });
+
+        const imageUrl = uploadResponse.url; // Esta es la URL que guardas en Railway
+        const [result] = await db.execute(
+            "INSERT INTO post (postitle, content, user_id, category_id, image_ref) VALUES (?, ?, ?, ?, ?)",
+            [postitle, content, user_id, category_id, imageUrl] // Guardamos la URL, no el nombre de archivo local
+        );
+
+        res.status(200).json({ message: "Post creado", postId: result.insertId });
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: "Error al subir a la nube" });
+    }
+});
+// --- RUTA DE CREAR POST local---
+/*
 router.post('/post', async (req, res) => {
     const { postitle, content, image_data, user_id, category_id } = req.body;
 
@@ -84,6 +111,8 @@ router.post('/post', async (req, res) => {
         res.status(500).json({ error: "Error interno al guardar el post" });
     }
 });
+
+*/
 // --- RUTA PARA GUARDAR METADATOS DEL CANVAS ---
 router.post('/saveposdetails', async (req, res) => {
     const { post_id, title_data, content_data, notes_data, notes_text, nameofplantilla, background_data } = req.body;
